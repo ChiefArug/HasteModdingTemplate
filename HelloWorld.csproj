@@ -134,7 +134,7 @@
         <Move SourceFiles=".haste/downloadcache/$(UnityRuntimeFiles)/LinuxPlayer" DestinationFiles=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64"/>
     </Target>
     <!-- The inputs for this task should probably be the entire list of unity player files, but one file is hopefully fine. -->
-    <!-- Only the game version is required for-->
+    <!-- Only the game version is required for inputs on the Haste side, as if that doesn't change nothing else has -->
     <Target Name="PatchHasteFiles" DependsOnTargets="DownloadUnityFiles;DownloadHasteFiles"
             Inputs=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64;.haste/game/$(GameVersionFile)"
             Outputs=".haste/game/$(SteamAppIdFile)">
