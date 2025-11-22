@@ -1,0 +1,161 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" InitialTargets="RemoveBackports">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+
+        <HasteDlls Condition=" '$(HasteDlls)' == '' ">.haste/game/Haste_Data/Managed/*.dll</HasteDlls>
+
+        <!-- We are referencing mscorlib/netstandard/etc. in the game, so disable the system framework refs -->
+        <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+        <!-- Do not generate .deps.json file (it is not needed) -->
+        <GenerateDependencyFile>false</GenerateDependencyFile>
+        <!-- Do not generate .pdb (debugging symbols) - you could ship this with your mod if you want, up to you -->
+        <DebugType>none</DebugType>
+
+        <!-- These are here so that we can reference them quickly later on -->
+        <SteamAppId>1796470</SteamAppId>
+        <UnityRuntimeFiles>Editor/Data/PlaybackEngines/LinuxStandaloneSupport/Variations/linux64_player_development_mono</UnityRuntimeFiles>
+        <SteamInfoFile>steam-info.json</SteamInfoFile>
+        <GameVersionFile>version.txt</GameVersionFile>
+        <UnityVersionFile>.unityversion</UnityVersionFile>
+        <SteamAppIdFile>steam_appid.txt</SteamAppIdFile>
+    </PropertyGroup>
+    <ItemGroup>
+        <!-- Reference all DLLs in the game. If you do not actually use anything in a DLL,
+         that DLL will not get referenced in your compiled mod, so it's fine to just reference everything.
+         Private="False" means that the referenced DLLs will not get copied to the output directory. -->
+        <Reference Include="$(HasteDlls)" Private="false"/>
+        <!-- Harmony -->
+        <!-- <Reference Include="C:\Program Files (x86)\Steam\steamapps\workshop\content\1796470\3385184093\*.dll" Private="false"/> -->
+    </ItemGroup>
+
+    <!-- MonoMod.Backports.dll is required for MonoMod to work, but adding it as a reference causes issues,
+     as it contains a lot of types already included in Unity's standard library mscorlib.dll. Exclude it
+     from the gHaste_daalobbed references using this snippit. (make sure to add InitialTargets="RemoveBackports" to
+     the <Project> tag at the top of this file) -->
+    <Target Name="RemoveBackports">
+        <ItemGroup>
+            <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Filename)').Contains('Backports'))"/>
+        </ItemGroup>
+    </Target>
+    
+    <!--
+        ============ HASTE SETUP TASKS ============
+        The following tasks download and set up Haste for mod development and in theory debugging, but I have not been able to get that working personally.
+        Authored by ChiefArug, if you want information on this madness they are the best person to go to.
+        
+        Yes none of this is needed if you just point the build file to a local copy of Hase, but that means editing this file per computer/collaborator.
+        ===========================================
+    -->
+    <Target Name="DownloadVersionInfo" Outputs=".haste/$(SteamInfoFile)">
+        <!-- Steam doesn't support the way that MSBuild determines if a downloaded file is new or not, so this gets downloaded each time -->
+        <!-- That is fine though as it is a tiny file -->
+        <DownloadFile DestinationFolder=".haste/downloadcache" SourceUrl="https://api.steamcmd.net/v1/info/$(SteamAppId)" DestinationFileName="$(SteamInfoFile)" SkipUnchangedFiles="True"/>
+        <!-- Read the lines from the file and then write them to a file in a diferent location -->
+        <!-- Yes this seems stupid, but it ensures that the file modification date doesn't change unless the contents change -->
+        <ReadLinesFromFile File=".haste/downloadcache/$(SteamInfoFile)">
+            <Output TaskParameter="Lines" ItemName="SteamInfoJsonContents"/>
+        </ReadLinesFromFile>
+        <WriteLinesToFile File=".haste/$(SteamInfoFile)" WriteOnlyWhenDifferent="true" Lines="@(SteamInfoJsonContents)" Overwrite="True"/>
+    </Target>
+    <Target Name="DownloadDepotDownloader" Outputs=".haste/buildbin/depotdownloader/DepotDownloader">
+        <MakeDir Directories=".haste/downloadcache;.haste/buildbin/depotdownloader"/>
+        <Message Text="Downloading DepotDownloader"/>
+        <DownloadFile DestinationFolder=".haste/downloadcache" SourceUrl="https://github.com/SteamRE/DepotDownloader/releases/download/DepotDownloader_3.4.0/DepotDownloader-linux-x64.zip">
+            <Output TaskParameter="DownloadedFile" ItemName="DepotDownloaderZip"/>
+        </DownloadFile>
+        <Message Text="Unzipping DepotDownloader"/>
+        <Unzip DestinationFolder=".haste/buildbin/depotdownloader" SourceFiles="@(DepotDownloaderZip)"/>
+        <PropertyGroup>
+            <DepotDownloader>.haste/buildbin/depotdownloader/DepotDownloader</DepotDownloader>
+        </PropertyGroup>
+    </Target>
+    <!-- Will only download haste files if the steam info file changed, which usually only happens when a new version is released. -->
+    <!-- It can happen for other reasons, but running depot downloader doesn't take *that* long so its fine -->
+    <Target Name="DownloadHasteFiles" DependsOnTargets="DownloadVersionInfo;DownloadDepotDownloader" Inputs=".haste/$(SteamInfoFile)" Outputs=".haste/game/update_last_checked_timestamp">
+        <!-- Run with the username if it is specified. Note this requires running with -qr at least once first! -->
+        <!-- Note the use of xargs is because $(<../.steamuser) wasn't working (using it requires escaping most of the characters like so: %24%28%3C../.steamuser%29 and even that wasn't working) -->
+        <!-- Timeout is 5 minutes by default, you might need to increase this -->
+        <Exec Condition="Exists('.steamuser')" Command="cat ../.steamuser | xargs ../$(DepotDownloader) -app $(SteamAppId) -remember-password -dir game -username " WorkingDirectory=".haste" Timeout="300000"/>
+        <!-- Run without the username if its not specified. This requires signing in each time! -->
+        <Exec Condition="!Exists('.steamuser')" Command="../$(DepotDownloader) -app $(SteamAppId) -qr -dir game -remember-password" WorkingDirectory=".haste" Timeout="300000"/>
+        <Message Condition="!Exists('.steamuser')" Text="Now that you have logged in once, you can specify your steam username in a .steamuser file to automatically log in next time!" Importance="high"/>
+        
+        <!-- This makes sure that even if the SteamInfoFile file gets updated with a non game related change, this task doesnt keep running every build. -->
+        <Touch Files=".haste/game/update_last_checked_timestamp" AlwaysCreate="true"/>
+        
+        <!-- Extract the Unity version number from the freshly downloaded game files -->
+        <!-- If your IDE shows an error here ignore it, ConsoleToMSBuild does work -->
+        <Exec Command="strings .haste/game/UnityPlayer.so | grep -x -E -m 1 '[0-9]+\.[0-9]+\.[0-9a-z]+ \([0-9a-z]{12}\)'" ConsoleToMSBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="FullUnityVersion"/>
+        </Exec>
+        <!-- Split the version number into its two parts -->
+        <Exec Command="echo '$(FullUnityVersion)' | grep -o -E '[0-9a-z]{12}'" ConsoleToMsBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="HashUnityVersion"/>
+        </Exec>
+        <Exec Command="echo '$(FullUnityVersion)' | grep -o -E '[0-9]+\.[0-9]+\.[0-9a-z]+'" ConsoleToMsBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="NumericUnityVersion"/>
+        </Exec>
+        <!-- Yes I know Message exists. It doesn't log into Riders output window hence why I am using Exec and echo-->
+        <Exec Command="echo 'Detected Unity Version: $(NumericUnityVersion) ($(HashUnityVersion))'"/>
+        
+        <!-- Write Unity version to a file for consumption by other targets -->
+        <WriteLinesToFile File=".haste/$(UnityVersionFile)" WriteOnlyWhenDifferent="true" Overwrite="True" Lines="$(FullUnityVersion)"/>
+    </Target>
+    <!-- It is VERY IMPORTANT that this specifies inputs and outputs properly cause extracting unity takes AGES -->
+    <Target Name="DownloadUnityFiles" DependsOnTargets="DownloadHasteFiles"
+            Inputs=".haste/$(UnityVersionFile)"
+            Outputs=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64">
+        <!-- Read the unity version from a file and split it into its component parts -->
+        <!-- We need to do this because if the DownloadHasteFiles task is skipped, these properties aren't set -->
+        <Exec Command="cat .haste/$(UnityVersionFile) | grep -o -E '[0-9a-z]{12}'" ConsoleToMsBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="HashUnityVersion"/>
+        </Exec>
+        <Exec Command="cat .haste/$(UnityVersionFile) | grep -o -E '[0-9]+\.[0-9]+\.[0-9a-z]+'" ConsoleToMsBuild="true">
+            <Output TaskParameter="ConsoleOutput" PropertyName="NumericUnityVersion"/>
+        </Exec>
+        
+        <DownloadFile DestinationFolder=".haste/downloadcache" SourceUrl="https://download.unity3d.com/download_unity/$(HashUnityVersion)/LinuxEditorInstaller/Unity-$(NumericUnityVersion).tar.xz">
+            <Output TaskParameter="DownloadedFile" PropertyName="UnityTarball"/>
+        </DownloadFile>
+        <!-- We need to use tar to extract .xz files as MSBuild doesn't support it yet. See https://github.com/dotnet/msbuild/issues/7944 -->
+        <Exec Command="echo 'Extracting Unity. This will take a while, expect about 800000 checkpoints'"/>
+        <Exec Command="tar -xmf '$(UnityTarball)' --wildcards --wildcards-match-slash --checkpoint=100000 '$(UnityRuntimeFiles)/*' -C .haste/game/" WorkingDirectory=".haste/downloadcache"/>
+
+        <!-- Rename this folder to Haste_Data, as that is whate Haste calls it -->
+        <!-- The Move task does not support directories for some reason so we use the mv command. See https://github.com/dotnet/msbuild/issues/8795 -->
+        <!-- First we need to delete the old folder though. We don't fail if it doesn't delete tho, cause the directory may not exist yet -->
+        <RemoveDir Directories=".haste/downloadcache$(UnityRuntimeFiles)/Haste_Data" ContinueOnError="true"/>
+        <Exec Command="mv '.haste/downloadcache/$(UnityRuntimeFiles)/Data' '.haste/downloadcache/$(UnityRuntimeFiles)/Haste_Data'"/>
+        <!-- Rename the main executable. Failing to do so will cause it to be unable to find Haste_Data -->
+        <Move SourceFiles=".haste/downloadcache/$(UnityRuntimeFiles)/LinuxPlayer" DestinationFiles=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64"/>
+    </Target>
+    <!-- The inputs for this task should probably be the entire list of unity player files, but one file is hopefully fine. -->
+    <!-- Only the game version is required for-->
+    <Target Name="PatchHasteFiles" DependsOnTargets="DownloadUnityFiles;DownloadHasteFiles"
+            Inputs=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64;.haste/game/$(GameVersionFile)"
+            Outputs=".haste/game/$(SteamAppIdFile)">
+        <!-- See https://github.com/dnSpy/dnSpy/wiki/Debugging-Unity-Games#turning-a-release-build-into-a-debug-build for what this does -->
+        <ItemGroup>
+            <DebugFilesToCopy Include=".haste/downloadcache/$(UnityRuntimeFiles)/**"/>
+        </ItemGroup>
+        <!-- Actually copy and overwrite the haste files with these new ones-->
+        <Copy SourceFiles="@(DebugFilesToCopy)" DestinationFiles="@(DebugFilesToCopy->'.haste/game/%(RecursiveDir)%(Filename)%(Extension)')"/>
+        <!-- Write the appid file that prevents the game from restarting itself if not launched under steam -->
+        <!-- This is also used as the output file for tracking if this task needs to run, so it is ALWAYS written to -->
+        <WriteLinestoFile File=".haste/game/$(SteamAppIdFile)" Lines="$(SteamAppId)" WriteOnlyWhenDifferent="False" Overwrite="True"/>
+        <!-- Enable debugging? Not sure how much this is requried, but include it anyway. Overwrite=False makes it append to the file. -->
+        <WriteLinestoFile File=".haste/game/Haste_Data/boot.config" Lines="player-connection-debug=1" Overwrite="False"/>
+    </Target>
+    <!-- This is a very small task thats primary purpose is to depend on PatchHasteFiles and run before the build is prepared-->
+    <Target Name="Setup" DependsOnTargets="PatchHasteFiles" BeforeTargets="Build">
+        <Exec Command="echo Setup complete!"/>
+    </Target>
+
+    <Target Name="CleanAllHasteFiles" BeforeTargets="CoreClean">
+        <RemoveDir Directories=".haste" ContinueOnError="true"/>
+    </Target>
+</Project>

@@ -1,0 +1,11 @@
+# Standard things to ignore
+obj/
+bin/
+Folder.DotSettings.user
+# This build's Haste specific things to ignore
+.haste/
+.steamuser
+
+# You may want to include some IDE config files from this folder, however that is up to you
+# Remove the following line and add exception to the .gitignore file in that folder if you do want to
+.idea/
