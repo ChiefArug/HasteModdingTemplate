@@ -55,6 +55,7 @@ Specifically this doesn't launch it through the Steam Runtime, which provides co
 If you have a wacky setup then this could be causing issues.
 - In theory, you can solve it by running Rider through Steam by adding it as a Non-Steam game and forcing it to run with the Steam Runtime
 - Properties -> Compatibility -> Force the use of a specific Steam Play compatibility tool -> Steam Linux Runtime 3.0 (sniper)
+I have also found that running with vulkan can cause issues, so adding `-force-opengl` to the program arguments in the run configuration helps sometimes.
 #### Stuck on black screen after launching
 Check the player.log file, if it mentions that the SteamAPI couldn't initialise then make sure Steam is running in the background in the same user as Rider and the game.
 Otherwise, it's possibly a random error in a native executable, see above.
