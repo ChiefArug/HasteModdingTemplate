@@ -43,12 +43,19 @@
     </Target>
     
     <!--
-        ============ HASTE SETUP TASKS ============
-        The following tasks download and set up Haste for mod development and in theory debugging, but I have not been able to get that working personally.
-        Authored by ChiefArug, if you want information on this madness they are the best person to go to.
+        ======================= HASTE SETUP TARGETS =======================
+         The following targets download and set up a project-local copy of
+          Haste for mod development and debugging of Haste and your mod.
         
-        Yes none of this is needed if you just point the build file to a local copy of Hase, but that means editing this file per computer/collaborator.
-        ===========================================
+         Yes none of this is needed if you just point the build file to a
+         local copy of Haste and give up debugging but that means editing
+                this file per computer/collaborator and no debug :(
+        
+        
+                               Authored by ChiefArug
+                          @chiefarug on the Haste Discord
+                      Contact for information on this madness
+        ===================================================================
     -->
     <Target Name="DownloadVersionInfo" Outputs=".haste/$(SteamInfoFile)">
         <!-- Steam doesn't support the way that MSBuild determines if a downloaded file is new or not, so this gets downloaded each time -->
