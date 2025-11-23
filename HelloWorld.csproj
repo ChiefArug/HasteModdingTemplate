@@ -156,7 +156,7 @@
         <WriteLinestoFile File=".haste/game/$(SteamAppIdFile)" Lines="$(SteamAppId)" WriteOnlyWhenDifferent="False" Overwrite="True"/>
         <!-- Enable debugging by editing boot.config -->
         <WriteLinestoFile File=".haste/game/Haste_Data/boot.config" Lines="player-connection-debug=1" Overwrite="False"/>
-        <WriteLinestoFile File=".haste/game/Haste_Data/boot.config" Lines="$([System.IO.File]::ReadAllText($(InputFile)).Replace('wait-for-native-debugger=0','wait-for-native-debugger=1'))" Overwrite="True"/>
+        <WriteLinestoFile File=".haste/game/Haste_Data/boot.config" Lines="$([System.IO.File]::ReadAllText('.haste/game/Haste_Data/boot.config').Replace('wait-for-native-debugger=0','wait-for-native-debugger=1'))" Overwrite="True"/>
     </Target>
     <!-- This is a very small target thats primary purpose is to depend on PatchHasteFiles and run before the build is prepared-->
     <Target Name="Setup" DependsOnTargets="PatchHasteFiles" BeforeTargets="Build">
