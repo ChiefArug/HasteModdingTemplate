@@ -13,7 +13,7 @@
         <!-- Do not generate .deps.json file (it is not needed) -->
         <GenerateDependencyFile>false</GenerateDependencyFile>
         <!-- Do not generate .pdb (debugging symbols) - you could ship this with your mod if you want, up to you -->
-        <DebugType>none</DebugType>
+        <DebugType>full</DebugType>
 
         <!-- These are here so that we can reference them quickly later on -->
         <SteamAppId>1796470</SteamAppId>
