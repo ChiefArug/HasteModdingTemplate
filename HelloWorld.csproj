@@ -61,12 +61,17 @@
         ======================= HASTE SETUP TARGETS =======================
          The following targets download and set up a project-local copy of
           Haste for mod development and debugging of Haste and your mod.
-        
+
          Yes none of this is needed if you just point the build file to a
          local copy of Haste and give up debugging but that means editing
                 this file per computer/collaborator and no debug :(
-        
-        
+
+        If you are using this template for multiple mods it is reccomended
+         that you set the HASTE_MODDING_PATH environment variable so all
+         mods using this template share one installation, as it is quite
+                                      large.
+
+
                                Authored by ChiefArug
                           @chiefarug on the Haste Discord
                       Contact for information on this madness
