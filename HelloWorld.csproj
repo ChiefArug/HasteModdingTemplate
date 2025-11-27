@@ -47,7 +47,16 @@
             <Reference Remove="@(Reference)" Condition="$([System.String]::new('%(Reference.Filename)').Contains('Backports'))"/>
         </ItemGroup>
     </Target>
-    
+
+    <!-- Make every class and property from the game public -->
+    <ItemGroup>
+        <PackageReference Include="Krafs.Publicizer" Version="2.3.0" PrivateAssets="all" /><Publicize Include="Assembly-CSharp" />
+        <!--
+        ... Add other DLLs you'd like to publicize here ...
+        Check out Krafs.Publicizer's documentation for more information: https://github.com/krafs/Publicizer#usage
+        -->
+    </ItemGroup>
+
     <!--
         ======================= HASTE SETUP TARGETS =======================
          The following targets download and set up a project-local copy of
