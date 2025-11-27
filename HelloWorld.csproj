@@ -128,14 +128,17 @@
         <DownloadFile DestinationFolder=".haste/downloadcache" SourceUrl="https://download.unity3d.com/download_unity/$(HashUnityVersion)/LinuxEditorInstaller/Unity-$(NumericUnityVersion).tar.xz">
             <Output TaskParameter="DownloadedFile" PropertyName="UnityTarball"/>
         </DownloadFile>
+        <!-- Clear out the old unity files as otherwise they may stick around -->
+        <RemoveDir Directories=".haste/downloadcache/Editor" ContinueOnError="true"/>
+
         <!-- We need to use tar to extract .xz files as MSBuild doesn't support it yet. See https://github.com/dotnet/msbuild/issues/7944 -->
         <Exec Command="echo 'Extracting Unity. This will take a while, expect about 800000 checkpoints'"/>
-        <Exec Command="tar -xmf '$(UnityTarball)' --wildcards --wildcards-match-slash --checkpoint=100000 '$(UnityRuntimeFiles)/*' -C .haste/game/" WorkingDirectory=".haste/downloadcache"/>
+        <Exec Command="tar -xmf '$(UnityTarball)' --wildcards --wildcards-match-slash --checkpoint=100000 '$(UnityRuntimeFiles)/*'" WorkingDirectory=".haste/downloadcache"/>
 
         <!-- Rename this folder to Haste_Data, as that is whate Haste calls it -->
         <!-- The Move task does not support directories for some reason so we use the mv command. See https://github.com/dotnet/msbuild/issues/8795 -->
         <!-- First we need to delete the old folder though. We don't fail if it doesn't delete tho, cause the directory may not exist yet -->
-        <RemoveDir Directories=".haste/downloadcache$(UnityRuntimeFiles)/Haste_Data" ContinueOnError="true"/>
+        <RemoveDir Directories=".haste/downloadcache/$(UnityRuntimeFiles)/Haste_Data" ContinueOnError="true"/>
         <Exec Command="mv '.haste/downloadcache/$(UnityRuntimeFiles)/Data' '.haste/downloadcache/$(UnityRuntimeFiles)/Haste_Data'"/>
         <!-- Rename the main executable. Failing to do so will cause it to be unable to find Haste_Data -->
         <Move SourceFiles=".haste/downloadcache/$(UnityRuntimeFiles)/LinuxPlayer" DestinationFiles=".haste/downloadcache/$(UnityRuntimeFiles)/Haste.x86_64"/>

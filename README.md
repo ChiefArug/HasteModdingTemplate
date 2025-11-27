@@ -59,6 +59,9 @@ I have also found that running with vulkan can cause issues, so adding `-force-o
 #### Stuck on black screen after launching
 Check the player.log file, if it mentions that the SteamAPI couldn't initialise then make sure Steam is running in the background in the same user as Rider and the game.
 Otherwise, it's possibly a random error in a native executable, see above.
+### Unhandled exception. System.ArgumentException: LogOn requires a username and password or access token to be set in 'details'.
+You need to log in to steam again, rename `.steamuser` to something else, run build and scan the qr, then rename it back for next time.
+
 
 #### Something else
 - Contact ChiefArug for assistance, or figure it out yourself then let them know how you fixed it.
